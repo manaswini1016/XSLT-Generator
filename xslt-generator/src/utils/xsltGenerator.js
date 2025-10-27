@@ -739,12 +739,10 @@ export function generateXMLTransform(mappings, namespaces = {}) {
         const hasMultipleOccurs = componentMapping && componentMapping.occurs > 1;
         
         if (hasForEach || hasMultipleOccurs) {
-          // Generate for-each for multiple occurrences
-          const forEachPath = componentMapping.forEachPath || 
-            (componentMapping.parsed || parseSourcePath(componentMapping.sourcePath)).elementName || 
-            escapedKey;
+          // Generate for-each for multiple occurrences - use full xpath with // prefix
+          const parsed = componentMapping.parsed || parseSourcePath(componentMapping.sourcePath);
+          const forEachPath = componentMapping.forEachPath || parsed.xpath || componentMapping.sourcePath;
           
-          output += `${indent}<!-- ${escapedKey} - For-each loop -->\n`;
           output += `${indent}<xsl:for-each select="${forEachPath}">\n`;
           
           // Generate element with attributes
@@ -781,20 +779,14 @@ export function generateXMLTransform(mappings, namespaces = {}) {
     const leafName = escapeXMLName(mapping.leafName);
     let output = '';
     
-    // Add comment for optional fields
-    if (!mapping.required) {
-      output += `${indent}<!-- ${leafName} - Optional field -->\n`;
-    }
-    
     // Check if this is a for-each field or has multiple occurrences
     const hasForEach = mapping.forEachPath;
     const hasMultipleOccurs = mapping.occurs > 1;
     
     if (hasForEach || hasMultipleOccurs) {
-      const forEachPath = mapping.forEachPath || 
-        (parsed.type === 'element' ? parsed.elementName : parsed.xpath);
+      // Use full xpath with // prefix
+      const forEachPath = mapping.forEachPath || parsed.xpath || mapping.sourcePath;
       
-      output += `${indent}<!-- ${leafName} - For-each loop -->\n`;
       output += `${indent}<xsl:for-each select="${forEachPath}">\n`;
       
       // Generate element with attributes
@@ -848,44 +840,12 @@ export function generateXMLTransform(mappings, namespaces = {}) {
    * Generate XML value selection inline with formatting
    */
   function generateXMLValueSelectInline(mapping, parsed, indent) {
-    const selectPath = parsed.elementName || parsed.xpath;
+    // Use the full xpath (with // prefix) instead of just elementName
+    const selectPath = parsed.xpath || mapping.sourcePath;
     
-    // Handle different field types
-    switch (mapping.fieldType) {
-      case 'date':
-      case 'dateTime':
-        return `${indent}<xsl:choose>
-  ${indent}  <xsl:when test="${selectPath}">
-  ${indent}    <xsl:value-of select="${selectPath}"/>
-  ${indent}  </xsl:when>
-  ${indent}  <xsl:otherwise>
-  ${indent}    <!-- Using current date-time as fallback -->
-  ${indent}    <xsl:value-of select="substring(string(current-dateTime()), 1, 19)"/>
-  ${indent}  </xsl:otherwise>
-  ${indent}</xsl:choose>\n`;
-      
-      case 'currency':
-        return `${indent}<xsl:attribute name="currencyID">USD</xsl:attribute>
-  ${indent}<xsl:value-of select="format-number(${selectPath}, '0.00')"/>\n`;
-      
-      case 'decimal':
-      case 'numeric':
-        return `${indent}<xsl:value-of select="format-number(${selectPath}, '0.00')"/>\n`;
-      
-      case 'time':
-        return `${indent}<xsl:value-of select="${selectPath}"/>\n`;
-      
-      default:
-        // String or generic type with error handling
-        return `${indent}<xsl:choose>
-  ${indent}  <xsl:when test="${selectPath}">
-  ${indent}    <xsl:value-of select="${selectPath}"/>
-  ${indent}  </xsl:when>
-  ${indent}  <xsl:otherwise>
-  ${indent}    <!-- Field ${mapping.targetName} is missing or has invalid XPath -->
-  ${indent}  </xsl:otherwise>
-  ${indent}</xsl:choose>\n`;
-    }
+    // Simple approach: just use xsl:value-of without error handling
+    // This matches the clean XSLT style from the Ferrari example
+    return `${indent}<xsl:value-of select="${selectPath}"/>\n`;
   }
   
   /**
