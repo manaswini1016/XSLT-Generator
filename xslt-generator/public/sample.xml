@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bookstore>
+  <book id="1" category="fiction">
+    <title>The Great Gatsby</title>
+    <author>F. Scott Fitzgerald</author>
+    <year>1925</year>
+    <price>10.99</price>
+    <publisher>
+      <name>Scribner</name>
+      <location>New York</location>
+    </publisher>
+  </book>
+  <book id="2" category="science">
+    <title>A Brief History of Time</title>
+    <author>Stephen Hawking</author>
+    <year>1988</year>
+    <price>15.99</price>
+    <publisher>
+      <name>Bantam Books</name>
+      <location>New York</location>
+    </publisher>
+  </book>
+  <book id="3" category="fiction">
+    <title>1984</title>
+    <author>George Orwell</author>
+    <year>1949</year>
+    <price>12.99</price>
+    <publisher>
+      <name>Secker & Warburg</name>
+      <location>London</location>
+    </publisher>
+  </book>
+  <book id="4" category="programming">
+    <title>Clean Code</title>
+    <author>Robert C. Martin</author>
+    <year>2008</year>
+    <price>34.99</price>
+    <publisher>
+      <name>Prentice Hall</name>
+      <location>Boston</location>
+    </publisher>
+  </book>
+</bookstore>

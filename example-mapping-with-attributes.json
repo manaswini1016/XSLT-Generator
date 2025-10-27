@@ -1,0 +1,199 @@
+{
+  "xsltVersion": "3.0",
+  "variables": [
+    {
+      "name": "DealerNumberID",
+      "value": "73084"
+    },
+    {
+      "name": "LanguageCode",
+      "value": "en-US"
+    },
+    {
+      "name": "SystemVersion",
+      "value": "5.5.4"
+    }
+  ],
+  "rootElement": {
+    "name": "soapenv:Envelope",
+    "attributes": []
+  },
+  "rootPath": "/",
+  "fields": [
+    {
+      "targetName": "soapenv:Header",
+      "targetPath": "soapenv:Header",
+      "sourcePath": "/",
+      "fieldType": "component",
+      "valueType": "empty"
+    },
+    {
+      "targetName": "PayloadManifest",
+      "targetPath": "soapenv:Header/PayloadManifest",
+      "sourcePath": "/",
+      "fieldType": "component",
+      "attributes": [
+        {
+          "name": "xmlns",
+          "value": "http://www.starstandards.org/webservices/2009/transport",
+          "isHardcoded": true
+        }
+      ]
+    },
+    {
+      "targetName": "manifest",
+      "targetPath": "soapenv:Header/PayloadManifest/manifest",
+      "sourcePath": "/",
+      "fieldType": "component",
+      "attributes": [
+        {
+          "name": "contentID",
+          "value": "Content0",
+          "isHardcoded": true
+        },
+        {
+          "name": "namespaceURI",
+          "value": "http://www.starstandards.org/STAR/5",
+          "isHardcoded": true
+        },
+        {
+          "name": "element",
+          "value": "ProcessFerrariRepairOrder",
+          "isHardcoded": true
+        },
+        {
+          "name": "version",
+          "value": "SystemVersion",
+          "isVariable": true
+        }
+      ],
+      "valueType": "empty"
+    },
+    {
+      "targetName": "soapenv:Body",
+      "targetPath": "soapenv:Body",
+      "sourcePath": "/",
+      "fieldType": "component"
+    },
+    {
+      "targetName": "ProcessMessage",
+      "targetPath": "soapenv:Body/ProcessMessage",
+      "sourcePath": "/",
+      "fieldType": "component",
+      "attributes": [
+        {
+          "name": "xmlns",
+          "value": "http://www.starstandards.org/webservices/2009/transport",
+          "isHardcoded": true
+        }
+      ]
+    },
+    {
+      "targetName": "ProcessFerrariRepairOrder",
+      "targetPath": "soapenv:Body/ProcessMessage/payload/content/ProcessFerrariRepairOrder",
+      "sourcePath": "/",
+      "fieldType": "component",
+      "attributes": [
+        {
+          "name": "xmlns",
+          "value": "http://www.starstandard.org/STAR/5",
+          "isHardcoded": true
+        },
+        {
+          "name": "releaseID",
+          "value": "5.5.4",
+          "isHardcoded": true
+        },
+        {
+          "name": "versionID",
+          "value": "1.0",
+          "isHardcoded": true
+        },
+        {
+          "name": "systemEnvironmentCode",
+          "value": "Production",
+          "isHardcoded": true
+        },
+        {
+          "name": "languageCode",
+          "value": "LanguageCode",
+          "isVariable": true
+        }
+      ]
+    },
+    {
+      "targetName": "CreationDateTime",
+      "targetPath": "soapenv:Body/ProcessMessage/payload/content/ProcessFerrariRepairOrder/ApplicationArea/Sender/CreationDateTime",
+      "sourcePath": "//header/documentDateTime",
+      "fieldType": "dateTime",
+      "valueType": "xpath"
+    },
+    {
+      "targetName": "BODID",
+      "targetPath": "soapenv:Body/ProcessMessage/payload/content/ProcessFerrariRepairOrder/ApplicationArea/Sender/BODID",
+      "sourcePath": "//transactionId",
+      "fieldType": "string",
+      "valueType": "xpath"
+    },
+    {
+      "targetName": "DealerNumberID",
+      "targetPath": "soapenv:Body/ProcessMessage/payload/content/ProcessFerrariRepairOrder/ApplicationArea/Sender/DealerNumberID",
+      "sourcePath": "//franchise/dealerNumber",
+      "fieldType": "string",
+      "valueType": "xpath"
+    },
+    {
+      "targetName": "DocumentID",
+      "targetPath": "soapenv:Body/ProcessMessage/payload/content/ProcessFerrariRepairOrder/FerrariRepairOrderHeader/DocumentIdentificationGroup/DocumentIdentification/DocumentID",
+      "sourcePath": "//header/repairOrderNumber",
+      "fieldType": "string",
+      "valueType": "xpath"
+    },
+    {
+      "targetName": "PriceCode",
+      "targetPath": "soapenv:Body/ProcessMessage/payload/content/ProcessFerrariRepairOrder/FerrariRepairOrderHeader/Price/PriceCode",
+      "sourcePath": "",
+      "fieldType": "string",
+      "valueType": "hardcoded",
+      "hardcodedValue": "Total"
+    },
+    {
+      "targetName": "PriceDescription",
+      "targetPath": "soapenv:Body/ProcessMessage/payload/content/ProcessFerrariRepairOrder/FerrariRepairOrderHeader/Price/PriceDescription",
+      "sourcePath": "",
+      "fieldType": "string",
+      "valueType": "hardcoded",
+      "hardcodedValue": "RO Sale Total"
+    },
+    {
+      "targetName": "Job",
+      "targetPath": "soapenv:Body/ProcessMessage/payload/content/ProcessFerrariRepairOrder/FerrariRepairOrder/Job",
+      "sourcePath": "//jobs",
+      "forEachPath": "//jobs",
+      "fieldType": "component",
+      "occurs": -1
+    },
+    {
+      "targetName": "JobNumberString",
+      "targetPath": "soapenv:Body/ProcessMessage/payload/content/ProcessFerrariRepairOrder/FerrariRepairOrder/Job/JobNumberString",
+      "sourcePath": "sourceId",
+      "fieldType": "string",
+      "valueType": "xpath"
+    },
+    {
+      "targetName": "OperationID",
+      "targetPath": "soapenv:Body/ProcessMessage/payload/content/ProcessFerrariRepairOrder/FerrariRepairOrder/Job/OperationID",
+      "sourcePath": "codesAndComment/complaintCode",
+      "fieldType": "string",
+      "valueType": "xpath"
+    },
+    {
+      "targetName": "ChannelCode",
+      "targetPath": "soapenv:Body/ProcessMessage/payload/content/ProcessFerrariRepairOrder/FerrariRepairOrderHeader/OwnerParty/SpecifiedPerson/TelephoneCommunication/ChannelCode",
+      "sourcePath": "",
+      "fieldType": "string",
+      "valueType": "hardcoded",
+      "hardcodedValue": "Work"
+    }
+  ]
+}
