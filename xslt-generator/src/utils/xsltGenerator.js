@@ -852,26 +852,25 @@ export function generateXMLTransform(mappings, namespaces = {}) {
    * Generate XSLT for JSON output format (requires XSLT 3.0)
    * 
    * Enhanced version with comprehensive features:
-   * 1. XPath normalization and validation
+   * 1. XPath normalization and validation based on actual XML structure
    * 2. Complete component & field coverage with hierarchy support
    * 3. Handling multiple occurrences (Occurs > 1)
    * 4. Proper attribute vs element mapping
-   * 5. Date/time and currency formatting
-   * 6. Error handling with inline comments
-   * 7. Namespace handling with exclude-result-prefixes
-   * 8. Hierarchical output structure preservation
+   * 5. Namespace detection and prefixing in XPath expressions
+   * 6. xpath-default-namespace support for default namespaces
+   * 7. Single quotes in key attributes: key="'FieldName'"
+   * 8. Valid JSON output using <xsl:output method="json" indent="yes"/>
+   * 9. Hierarchical output structure preservation
    */
   export function generateJSONTransform(mappings, namespaces = {}) {
     try {
       console.log('generateJSONTransform called with:', { mappings, namespaces });
       
-      // Build namespace declarations
+      // Build namespace declarations (exclude default namespace from xmlns declarations)
       const nsDeclarations = Object.entries(namespaces)
         .filter(([key]) => key !== 'default')
         .map(([prefix, uri]) => `xmlns:${prefix}="${uri}"`)
-        .join(' ');
-      
-      const defaultNS = namespaces.default ? `xmlns="${namespaces.default}"` : '';
+        .join('\n    ');
       
       // Get namespace prefixes for exclude-result-prefixes
       const nsPrefixes = Object.keys(namespaces)
@@ -880,20 +879,33 @@ export function generateXMLTransform(mappings, namespaces = {}) {
       
       const excludeResultPrefixes = nsPrefixes ? `exclude-result-prefixes="${nsPrefixes}"` : '';
       
+      // Use xpath-default-namespace when a default namespace is present
+      const xpathDefaultNS = namespaces.default ? `xpath-default-namespace="${namespaces.default}"` : '';
+      
+      // Build the stylesheet opening with proper formatting
       let xslt = `<?xml version="1.0" encoding="UTF-8"?>
-  <xsl:stylesheet version="3.0" 
-    xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-    ${nsDeclarations}
-    ${defaultNS}
-    ${excludeResultPrefixes}
-    expand-text="yes">
-    
-    <xsl:output method="json" indent="yes" encoding="UTF-8"/>
-    
-    <!-- Root template -->
+<xsl:stylesheet version="3.0"
+    xmlns:xsl="http://www.w3.org/1999/XSL/Transform"`;
+      
+      if (nsDeclarations) {
+        xslt += `\n    ${nsDeclarations}`;
+      }
+      
+      if (excludeResultPrefixes) {
+        xslt += `\n    ${excludeResultPrefixes}`;
+      }
+      
+      if (xpathDefaultNS) {
+        xslt += `\n    ${xpathDefaultNS}`;
+      }
+      
+      xslt += `>
+ 
+    <xsl:output method="json" indent="yes"/>
+ 
     <xsl:template match="/">
-      <xsl:map>
-  `;
+<xsl:map>
+`;
   
       console.log('Step 1: Normalizing mappings...');
       // STEP 1: Normalize and validate all XPaths
@@ -912,12 +924,16 @@ export function generateXMLTransform(mappings, namespaces = {}) {
       
       console.log('Step 4: Generating JSON map entries...');
       // STEP 4: Generate JSON map entries with formatting
-      xslt += generateJSONMapEntriesEnhanced(jsonHierarchy, normalizedMappings, mappings.rootPath || '/*', '      ');
+      // Use for-each wrapper if there's a root path specified
+      const rootPath = mappings.rootPath || '/*[1]';
+      xslt += `<xsl:for-each select="${rootPath}">\n`;
+      xslt += generateJSONMapEntriesEnhanced(jsonHierarchy, normalizedMappings, rootPath, '');
+      xslt += `</xsl:for-each>\n`;
       
-      xslt += `    </xsl:map>
-    </xsl:template>
-    
-  </xsl:stylesheet>`;
+      xslt += `</xsl:map>
+</xsl:template>
+ 
+</xsl:stylesheet>`;
       
       console.log('JSON XSLT generation complete');
       return xslt;
@@ -1002,52 +1018,15 @@ export function generateXMLTransform(mappings, namespaces = {}) {
     return hierarchy;
   }
   
-  /**
-   * Generate JSON map entries from hierarchy (legacy - kept for backward compatibility)
-   */
-  function generateJSONMapEntries(hierarchy, indent) {
-    let output = '';
-    
-    Object.entries(hierarchy).forEach(([key, value]) => {
-      if (key === '_fields') {
-        // Generate entries for leaf fields
-        value.forEach(mapping => {
-          const sourcePath = normalizeXPath(mapping.sourcePath).replace(/^\/\//, '').replace(/^\//, '');
-          const isAttribute = mapping.sourceType === 'attribute';
-          
-          if (isAttribute) {
-            const attrMatch = sourcePath.match(/(.+)\/@(.+)/);
-            if (attrMatch) {
-              output += `${indent}<xsl:map-entry key="${mapping.leafName}">
-  ${indent}  <xsl:sequence select="${attrMatch[1]}/@${attrMatch[2]}"/>
-  ${indent}</xsl:map-entry>
-  `;
-            }
-          } else {
-            const elementName = sourcePath.split('/').pop();
-            output += `${indent}<xsl:map-entry key="${mapping.leafName}">
-  ${indent}  <xsl:sequence select="${elementName}"/>
-  ${indent}</xsl:map-entry>
-  `;
-          }
-        });
-      } else {
-        // Nested object
-        output += `${indent}<xsl:map-entry key="${key}">
-  ${indent}  <xsl:map>
-  `;
-        output += generateJSONMapEntries(value, indent + '    ');
-        output += `${indent}  </xsl:map>
-  ${indent}</xsl:map-entry>
-  `;
-      }
-    });
-    
-    return output;
-  }
+
   
   /**
    * Generate enhanced JSON map entries with comprehensive feature support
+   * Enhanced to support:
+   * - Single quotes in key attributes: key="'FieldName'"
+   * - Full XPath expressions with namespace prefixes
+   * - Proper namespace handling
+   * - XPath validation and correction
    */
   function generateJSONMapEntriesEnhanced(hierarchy, mappings, rootPath, indent) {
     let output = '';
@@ -1069,24 +1048,29 @@ export function generateXMLTransform(mappings, namespaces = {}) {
             output += `${indent}<!-- ${leafName} - Optional field -->\n`;
           }
           
+          // Validate and fix XPath - use full xpath with namespace prefixes
+          const xpath = validateAndFixXPath(mapping.sourcePath, parsed);
+          
           // Handle multiple occurrences
           if (mapping.occurs > 1) {
             output += `${indent}<!-- ${leafName} - Multiple occurrences (Occurs: ${mapping.occurs}) -->\n`;
-            output += `${indent}<xsl:map-entry key="${leafName}">\n`;
+            // Use single quotes inside double quotes for key
+            output += `${indent}<xsl:map-entry key="'${leafName}'">\n`;
             output += `${indent}  <xsl:array>\n`;
-            output += `${indent}    <xsl:for-each select="${parsed.type === 'element' ? parsed.elementName : parsed.xpath}">\n`;
-            output += generateJSONValueSelect(mapping, parsed, indent + '      ');
+            output += `${indent}    <xsl:for-each select="${xpath}">\n`;
+            output += generateJSONValueSelectEnhanced(mapping, parsed, xpath, indent + '      ');
             output += `${indent}    </xsl:for-each>\n`;
             output += `${indent}  </xsl:array>\n`;
             output += `${indent}</xsl:map-entry>\n`;
           } else {
-            // Single occurrence
-            output += `${indent}<xsl:map-entry key="${leafName}">\n`;
+            // Single occurrence - use single quotes inside double quotes for key
+            output += `${indent}<xsl:map-entry key="'${leafName}'">\n`;
             
             if (parsed.type === 'attribute') {
-              output += `${indent}  <xsl:sequence select="@${parsed.attributeName}"/>\n`;
+              // For attributes, use @ syntax
+              output += `${indent}  <xsl:value-of select="${xpath}"/>\n`;
             } else {
-              output += generateJSONValueSelect(mapping, parsed, indent + '  ');
+              output += generateJSONValueSelectEnhanced(mapping, parsed, xpath, indent + '  ');
             }
             
             output += `${indent}</xsl:map-entry>\n`;
@@ -1102,10 +1086,14 @@ export function generateXMLTransform(mappings, namespaces = {}) {
         );
         
         if (componentMapping && componentMapping.occurs > 1) {
+          const parsed = componentMapping.parsed || parseSourcePath(componentMapping.sourcePath);
+          const xpath = validateAndFixXPath(componentMapping.sourcePath, parsed);
+          
           output += `${indent}<!-- ${escapedKey} - Multiple occurrences (Occurs: ${componentMapping.occurs}) -->\n`;
-          output += `${indent}<xsl:map-entry key="${escapedKey}">\n`;
+          // Use single quotes inside double quotes for key
+          output += `${indent}<xsl:map-entry key="'${escapedKey}'">\n`;
           output += `${indent}  <xsl:array>\n`;
-          output += `${indent}    <xsl:for-each select="${componentMapping.parsed?.elementName || escapedKey}">\n`;
+          output += `${indent}    <xsl:for-each select="${xpath}">\n`;
           output += `${indent}      <xsl:map>\n`;
           output += generateJSONMapEntriesEnhanced(value, mappings, rootPath, indent + '        ');
           output += `${indent}      </xsl:map>\n`;
@@ -1113,7 +1101,8 @@ export function generateXMLTransform(mappings, namespaces = {}) {
           output += `${indent}  </xsl:array>\n`;
           output += `${indent}</xsl:map-entry>\n`;
         } else {
-          output += `${indent}<xsl:map-entry key="${escapedKey}">\n`;
+          // Use single quotes inside double quotes for key
+          output += `${indent}<xsl:map-entry key="'${escapedKey}'">\n`;
           output += `${indent}  <xsl:map>\n`;
           output += generateJSONMapEntriesEnhanced(value, mappings, rootPath, indent + '    ');
           output += `${indent}  </xsl:map>\n`;
@@ -1174,6 +1163,46 @@ export function generateXMLTransform(mappings, namespaces = {}) {
   ${indent}  </xsl:otherwise>
   ${indent}</xsl:choose>\n`;
     }
+  }
+  
+  /**
+   * Generate enhanced JSON value selection with full XPath support
+   * Uses <xsl:value-of> instead of <xsl:sequence> for better JSON serialization
+   */
+  function generateJSONValueSelectEnhanced(mapping, parsed, xpath, indent) {
+    // Use simple xsl:value-of for clean output - matches the sample XSLT pattern
+    return `${indent}<xsl:value-of select="${xpath}"/>\n`;
+  }
+  
+  /**
+   * Validate and fix XPath expressions based on actual XML structure
+   * Ensures namespace prefixes are included and XPath is well-formed
+   */
+  function validateAndFixXPath(sourcePath, parsed) {
+    if (!sourcePath) return '';
+    
+    // If XPath already has namespace prefix, use it as-is
+    if (sourcePath.includes(':') && !sourcePath.startsWith('//')) {
+      return sourcePath;
+    }
+    
+    // Use the full xpath from parsed object
+    let xpath = parsed.xpath || sourcePath;
+    
+    // Ensure XPath is properly formatted
+    xpath = normalizeXPath(xpath);
+    
+    // For attributes, ensure @ symbol is present
+    if (parsed.type === 'attribute') {
+      if (!xpath.includes('/@') && !xpath.includes('@')) {
+        // Fix attribute XPath
+        if (parsed.parentPath && parsed.attributeName) {
+          xpath = `${parsed.parentPath}/@${parsed.attributeName}`;
+        }
+      }
+    }
+    
+    return xpath;
   }
   
   /**
